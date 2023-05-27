@@ -23,11 +23,17 @@ namespace PSR.Cad
 {
     public class PlugIn
     {
+        private void StatusInfoCallback (string status)
+        {
+            Document dwg = Application.DocumentManager.MdiActiveDocument;
+            dwg.Editor.WriteMessage(status);
+        }
+        
         [CommandMethod("BuildPlumbingSystem")]
         public void BuildPlumbingSystem()
         {
-            Document dwg = Platform.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-            dwg.Editor.WriteMessage("Начат расчет системы водоотведения.");
+            Document dwg = Application.DocumentManager.MdiActiveDocument;
+            dwg.Editor.WriteMessage("Получение исходных данных о системе водоотведения.");
 
             Module module = Helpers.DocumentHelper.GetPlumbingModule(dwg, Helpers.ReadMode.Refresh);
             
@@ -38,6 +44,9 @@ namespace PSR.Cad
             foreach (var drain in module.Drains) dwg.Editor.WriteMessage(drain.ToString());
 
             dwg.Editor.WriteMessage("Стояк:{0}", module.VentStack.ToString());
+
+            Builder.Build(module, StatusInfoCallback);
+
         }
     }
 }
