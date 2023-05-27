@@ -31,20 +31,44 @@ namespace PSR
 
             return true;
         }
-        
+
+        private static bool CheckDrains(Module module)
+        {
+            if (module == null) return false;
+            if (module.Drains == null) return false;
+            if (module.Drains.Count == 0) return false;
+            foreach (Entry entry in module.Drains)
+            {
+                if (entry.Diameter == 0) return false;
+                int count = 0;
+                foreach (Wall wall in module.Walls)
+                {
+                    if (wall.Length() == (wall.FirstPoint.DistanceTo(entry.Center) + wall.SecondPoint.DistanceTo(entry.Center))) count++;
+                }
+                if (count == 0) return false;
+            }
+            return true;
+        }
+
         public static bool Build(Module module, Action<string> statusCallback = null) 
         {
             statusCallback?.Invoke("Начат расчет системы водоотведения.");
-            statusCallback?.Invoke("Построение сетки");
+            statusCallback?.Invoke("Проверка исходных данных");
             if (!CheckWalls(module)) 
             {
                 statusCallback?.Invoke("Контур стен в помещении задан неверно.");
+                return false;
+            }
+            if (!CheckDrains(module))
+            {
+                statusCallback?.Invoke("Размещение потребителей задано неверно.");
                 return false;
             }
             statusCallback?.Invoke("Расчет минимального покрывающего дерева");
             statusCallback?.Invoke("Подбор фиттингов");
             statusCallback?.Invoke("Подбор редукций");
             statusCallback?.Invoke("Подбор труб");
+            statusCallback?.Invoke("Расчет системы водоотведения завершен.");
 
             return true;
         }

@@ -43,6 +43,11 @@
                 );
         }
 
+        public double Length()
+        {
+            return FirstPoint.DistanceTo(SecondPoint);
+        }
+
         public override string ToString()
         {
             return string.Format("{0} - {1}", FirstPoint.ToString(), SecondPoint.ToString());
