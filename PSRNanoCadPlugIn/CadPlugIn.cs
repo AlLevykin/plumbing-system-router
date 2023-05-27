@@ -19,15 +19,25 @@ using PlatformDb = Teigha;
   using PlatformDb = Autodesk.AutoCAD;
 #endif
 
-namespace PSR
+namespace PSR.Cad
 {
-    public class CadPlugIn
+    public class PlugIn
     {
         [CommandMethod("BuildPlumbingSystem")]
         public void BuildPlumbingSystem()
         {
-            Editor ed = Platform.ApplicationServices.Application.DocumentManager.MdiActiveDocument.Editor;
-            ed.WriteMessage("Добро пожаловать в управляемый код nanoCAD.");
+            Document dwg = Platform.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+            dwg.Editor.WriteMessage("Начат расчет системы водоотведения.");
+
+            Module module = Helpers.DocumentHelper.GetPlumbingModule(dwg, Helpers.ReadMode.Refresh);
+            
+            dwg.Editor.WriteMessage("Количество стен:{0}", module.Walls.Count);
+            foreach (var wall in module.Walls) dwg.Editor.WriteMessage(wall.ToString());
+
+            dwg.Editor.WriteMessage("Количество потребителей:{0}", module.Drains.Count);
+            foreach (var drain in module.Drains) dwg.Editor.WriteMessage(drain.ToString());
+
+            dwg.Editor.WriteMessage("Стояк:{0}", module.VentStack.ToString());
         }
     }
 }
