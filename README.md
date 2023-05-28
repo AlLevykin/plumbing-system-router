@@ -4,6 +4,9 @@ Plumbing system router
 Задача № 8 "СЕРВИС ГЕНЕРАЦИИ ТРАССЫ СИСТЕМЫ ВОДООТВЕДЕНИЯ"
 https://leaders2023.innoagency.ru/task_8
 
+## Презентация проекта
+https://disk.yandex.ru/d/h2H-etjsnGhP5Q
+
 ## Инструкция по установке
 Для работы с программой необходимо установить Nano CAD 23 https://www.nanocad.ru/products/platform/
 Со страницы Releases скачать последнюю версию дистрибутива.
