@@ -2,6 +2,9 @@
 using QuickGraph.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace PSR
 {
@@ -13,8 +16,8 @@ namespace PSR
             if (module.Walls == null) return false;
             if (module.Walls.Count == 0) return false;
 
-            UndirectedGraph<Point, Edge<Point>> graph = new UndirectedGraph<Point, Edge<Point>>();            
-            foreach (Wall wall in module.Walls) 
+            UndirectedGraph<Point, Edge<Point>> graph = new UndirectedGraph<Point, Edge<Point>>();
+            foreach (Wall wall in module.Walls)
             {
                 graph.AddVertex(wall.FirstPoint);
                 graph.AddVertex(wall.SecondPoint);
@@ -43,18 +46,115 @@ namespace PSR
                 int count = 0;
                 foreach (Wall wall in module.Walls)
                 {
-                    if (wall.Length() == (wall.FirstPoint.DistanceTo(entry.Center) + wall.SecondPoint.DistanceTo(entry.Center))) count++;
+                    if (wall.Length ==
+                       (wall.FirstPoint.DistanceTo(new Point() { X = entry.Center.X, Y = entry.Center.Y, Z = 0 })
+                       +
+                       wall.SecondPoint.DistanceTo(new Point() { X = entry.Center.X, Y = entry.Center.Y, Z = 0 })))
+                        count++;
                 }
                 if (count == 0) return false;
             }
             return true;
         }
 
-        public static bool Build(Module module, Action<string> statusCallback = null) 
+        private static bool Route(Module module)
+        {
+            const double step = 5;
+
+            Stack<Entry> entries = new Stack<Entry>();
+            UndirectedGraph<Point, Edge<Point>> graph = new UndirectedGraph<Point, Edge<Point>>();
+            foreach (Wall wall in module.Walls)
+            {
+                List<Point> points = wall.Points2D(step);
+                if (points.Count == 0) continue;
+
+                graph.AddVertex(points[0]);
+
+                for (int i = 1; i < points.Count; i++)
+                {
+                    graph.AddVertex(points[i]);
+                    graph.AddEdge(new Edge<Point>(points[i - 1], points[i]));
+                }
+            }
+
+            Point nearestPoint = null;
+            double minDistance = double.MaxValue;
+            foreach (Point p in graph.Vertices)
+            {
+                if ((nearestPoint == null) || (module.VentStack.Center.DistanceTo(p) < minDistance))
+                {
+                    minDistance = module.VentStack.Center.DistanceTo(p);
+                    nearestPoint = p;
+                }
+            }
+            graph.AddVertex(module.VentStack.Center);
+            graph.AddEdge(new Edge<Point>(nearestPoint, module.VentStack.Center));
+            entries.Push(module.VentStack);
+
+            foreach (Entry entry in module.Drains)
+            {
+                Point nearestP = null;
+                double minD = double.MaxValue;
+                foreach (Point p in graph.Vertices)
+                {
+                    if ((nearestP == null) || (entry.Center.DistanceTo(p) < minD))
+                    {
+                        minD = entry.Center.DistanceTo(p);
+                        nearestP = p;
+                    }
+                }
+                graph.AddVertex(entry.Center);
+                if (entry.Center.Z != nearestP.Z)
+                {
+                    graph.AddEdge(new Edge<Point>(nearestP, entry.Center));
+                    entries.Push(entry);
+                }
+                else
+                {
+                    Point point = new Point() { X = nearestP.X, Y = nearestP.Y, Z = entry.Center.Z };
+                }
+            }
+
+            UndirectedGraph<Point, Edge<Point>> mstGraph = new UndirectedGraph<Point, Edge<Point>>();
+            Func<Edge<Point>, double> EdgeCost = e => e.Source.DistanceTo(e.Target);
+
+            while (entries.Count > 0)
+            {
+                Entry curEntry = entries.Pop();
+                foreach (Entry entry in entries)
+                {
+                    var TryGetPaths = graph.ShortestPathsDijkstra(EdgeCost, curEntry.Center);
+                    IEnumerable<Edge<Point>> path;
+                    if (TryGetPaths(entry.Center, out path))
+                    {
+                        foreach (Edge<Point> edge in path)
+                        {
+                            mstGraph.AddVertex(edge.Source);
+                            mstGraph.AddVertex(edge.Target);
+                            mstGraph.AddEdge(edge);
+                        }
+                    }
+                }
+            }
+
+            IEnumerable<Edge<Point>> mst = mstGraph.MinimumSpanningTreePrim(EdgeCost);
+
+            //Point root = module.Walls[0].FirstPoint;
+            //Func<Edge<Point>, double> EdgeCost = e => e.Source.DistanceTo(e.Target);
+            //var TryGetPaths = graph.ShortestPathsDijkstra(EdgeCost, root);
+            //foreach (Point target in graph.Vertices)
+            //{
+            //    if ((root != target) && (!TryGetPaths(target, out IEnumerable<Edge<Point>> path))) return false;
+            //}
+
+            return true;
+        }
+
+        public static bool Build(Module module, Action<string> statusCallback = null)
         {
             statusCallback?.Invoke("Начат расчет системы водоотведения.");
-            statusCallback?.Invoke("Проверка исходных данных");
-            if (!CheckWalls(module)) 
+            statusCallback?.Invoke("Проверка исходных данных.");
+            if (!CheckWalls(module))
             {
                 statusCallback?.Invoke("Контур стен в помещении задан неверно.");
                 return false;
@@ -64,10 +164,14 @@ namespace PSR
                 statusCallback?.Invoke("Размещение потребителей задано неверно.");
                 return false;
             }
-            statusCallback?.Invoke("Расчет минимального покрывающего дерева");
-            statusCallback?.Invoke("Подбор фиттингов");
-            statusCallback?.Invoke("Подбор редукций");
-            statusCallback?.Invoke("Подбор труб");
+            statusCallback?.Invoke("Трассировка.");
+            if (!Route(module))
+            {
+                statusCallback?.Invoke("Трассировка завершилась с ошибкой.");
+                return false;
+            }
+            statusCallback?.Invoke("Подбор труб и редукций.");
+            statusCallback?.Invoke("Подбор фиттингов.");
             statusCallback?.Invoke("Расчет системы водоотведения завершен.");
 
             return true;

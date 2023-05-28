@@ -29,11 +29,15 @@ namespace PSR
 
         public static bool operator ==(Point a, Point b)
         {
+            if ((object)a == null && (object)b == null) return true;
+            if ((object)a == null || (object)b == null) return false;
             return a.DistanceTo(b) == 0;
         }
         
         public static bool operator !=(Point a, Point b)
         {
+            if ((object)a == null && (object)b == null) return false;
+            if ((object)a == null || (object)b == null) return true;
             return a.DistanceTo(b) != 0;
         }
 
