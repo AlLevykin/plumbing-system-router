@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="Builder.cs" />
     <Compile Include="Entry.cs" />
+    <Compile Include="Helpers\Geometry.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="Point.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -2,10 +2,8 @@
 using QuickGraph.Algorithms;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+using PSR.Helpers;
 using System.Linq;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace PSR
 {
@@ -147,32 +145,57 @@ namespace PSR
             }
             graph.AddEdgeRange(mst);
 
-            List<Point> errors = new List<Point>();
-            List<Point> tripls = new List<Point>();
-            List<Point> sockets = new List<Point>();
-            List<Point> crosses = new List<Point>();
             foreach (Point point in graph.Vertices)
             {
                 int adjacentDegree = graph.AdjacentDegree(point);
                 switch (adjacentDegree)
                 {
                     case 1:
-                        sockets.Add(point);
+                        module.sockets.Add(point);
                         break;
                     case 2:
                         IEnumerable<Edge<Point>> adjacentEdges = graph.AdjacentEdges(point);
+                        List<Edge<Point>> edges = new List<Edge<Point>>(adjacentEdges);
+                        double angle = Geometry.AngleBetween(edges[0], edges[1]);
+
+                        switch (angle)
+                        {
+                            case 180:
+                                module.tubeLength += edges[0].Source.DistanceTo(edges[0].Target);
+                                module.tubeLength += edges[1].Source.DistanceTo(edges[1].Target);
+                                break;
+                            case 0:
+                                module.tubeLength += edges[0].Source.DistanceTo(edges[0].Target);
+                                module.tubeLength += edges[1].Source.DistanceTo(edges[1].Target);
+                                break;
+                            case 90:
+                                module.angles90.Add(point);
+                                break;
+                            case 45:
+                                module.angles45.Add(point);
+                                break;
+                            case 30:
+                                module.angles30.Add(point);
+                                break;
+                            default:
+                                module.errors.Add(point);
+                                break;
+                        }
+
                         break;
                     case 3:
-                        tripls.Add(point);
+                        module.tripls.Add(point);
                         break;
                     case 4:
-                        crosses.Add(point);
+                        module.crosses.Add(point);
                         break;
                     default:
-                        errors.Add(point);
+                        module.errors.Add(point);
                         break;
                 }
             }
+
+            module.tubeLength = Math.Round(module.tubeLength / 2);
 
             return true;
         }
@@ -192,13 +215,12 @@ namespace PSR
                 return false;
             }
             statusCallback?.Invoke("Трассировка.");
+            statusCallback?.Invoke("Подбор фиттингов, труб и редукций.");
             if (!Route(module))
             {
                 statusCallback?.Invoke("Трассировка завершилась с ошибкой.");
                 return false;
             }
-            statusCallback?.Invoke("Подбор труб и редукций.");
-            statusCallback?.Invoke("Подбор фиттингов.");
             statusCallback?.Invoke("Расчет системы водоотведения завершен.");
 
             return true;
