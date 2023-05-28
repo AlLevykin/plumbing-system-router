@@ -3,6 +3,7 @@ using QuickGraph.Algorithms;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -97,7 +98,7 @@ namespace PSR
                 double minD = double.MaxValue;
                 foreach (Point p in graph.Vertices)
                 {
-                    if ((nearestP == null) || (entry.Center.DistanceTo(p) < minD))
+                    if (entry.Center.DistanceTo(p) < minD && p.Z == 0)
                     {
                         minD = entry.Center.DistanceTo(p);
                         nearestP = p;
@@ -138,14 +139,40 @@ namespace PSR
             }
 
             IEnumerable<Edge<Point>> mst = mstGraph.MinimumSpanningTreePrim(EdgeCost);
+            graph = new UndirectedGraph<Point, Edge<Point>>();
+            foreach (Edge<Point> edge in mst)
+            {
+                graph.AddVertex(edge.Source);
+                graph.AddVertex(edge.Target);
+            }
+            graph.AddEdgeRange(mst);
 
-            //Point root = module.Walls[0].FirstPoint;
-            //Func<Edge<Point>, double> EdgeCost = e => e.Source.DistanceTo(e.Target);
-            //var TryGetPaths = graph.ShortestPathsDijkstra(EdgeCost, root);
-            //foreach (Point target in graph.Vertices)
-            //{
-            //    if ((root != target) && (!TryGetPaths(target, out IEnumerable<Edge<Point>> path))) return false;
-            //}
+            List<Point> errors = new List<Point>();
+            List<Point> tripls = new List<Point>();
+            List<Point> sockets = new List<Point>();
+            List<Point> crosses = new List<Point>();
+            foreach (Point point in graph.Vertices)
+            {
+                int adjacentDegree = graph.AdjacentDegree(point);
+                switch (adjacentDegree)
+                {
+                    case 1:
+                        sockets.Add(point);
+                        break;
+                    case 2:
+                        IEnumerable<Edge<Point>> adjacentEdges = graph.AdjacentEdges(point);
+                        break;
+                    case 3:
+                        tripls.Add(point);
+                        break;
+                    case 4:
+                        crosses.Add(point);
+                        break;
+                    default:
+                        errors.Add(point);
+                        break;
+                }
+            }
 
             return true;
         }
